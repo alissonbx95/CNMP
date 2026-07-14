@@ -381,7 +381,7 @@ body.high-contrast .brand-copy strong { color: #fff; }
 }
 .filters-grid {
   display: grid;
-  grid-template-columns: minmax(220px, 1.65fr) repeat(4, minmax(145px, 1fr)) auto;
+  grid-template-columns: minmax(220px, 1.65fr) repeat(5, minmax(145px, 1fr)) auto;
   gap: 11px;
   align-items: end;
 }
@@ -936,6 +936,10 @@ dialog::backdrop { background: rgba(28, 14, 16, .62); backdrop-filter: blur(2px)
           <select class="select" id="filterUnit"><option value="">Todas</option></select>
         </div>
         <div class="field">
+          <label for="filterPartner">Parceiro principal</label>
+          <select class="select" id="filterPartner" title="Selecione um parceiro principal"><option value="">Todos os parceiros</option></select>
+        </div>
+        <div class="field">
           <label for="filterClass">Classe</label>
           <select class="select" id="filterClass"><option value="">Todas</option></select>
         </div>
@@ -1246,7 +1250,7 @@ dialog::backdrop { background: rgba(28, 14, 16, .62); backdrop-filter: blur(2px)
     meta: {},
     history: [],
     filters: {
-      search: '', status: '', validity: '', unit: '', className: '', instrument: '', year: '', ending: '', documents: '', alerts: false, financial: false, adhesions: false
+      search: '', status: '', validity: '', unit: '', partner: '', className: '', instrument: '', year: '', ending: '', documents: '', alerts: false, financial: false, adhesions: false
     },
     sortKey: 'signatureDate',
     sortDir: 'desc',
@@ -1267,7 +1271,7 @@ dialog::backdrop { background: rgba(28, 14, 16, .62); backdrop-filter: blur(2px)
     baseSourceName: $('baseSourceName'), baseSourceMeta: $('baseSourceMeta'), downloadBaseBtn: $('downloadBaseBtn'), restoreBaseBtn: $('restoreBaseBtn'), relationParentCount: $('relationParentCount'), relationAdhesionCount: $('relationAdhesionCount'), relationUnlinkedCount: $('relationUnlinkedCount'),
     updateDropzone: $('updateDropzone'), updateFileInput: $('updateFileInput'), excelStatus: $('excelStatus'),
     advancedFiltersBtn: $('advancedFiltersBtn'), advancedFilters: $('advancedFilters'), clearFiltersBtn: $('clearFiltersBtn'),
-    filterSearch: $('filterSearch'), filterStatus: $('filterStatus'), filterValidity: $('filterValidity'), filterUnit: $('filterUnit'), filterClass: $('filterClass'),
+    filterSearch: $('filterSearch'), filterStatus: $('filterStatus'), filterValidity: $('filterValidity'), filterUnit: $('filterUnit'), filterPartner: $('filterPartner'), filterClass: $('filterClass'),
     filterInstrument: $('filterInstrument'), filterYear: $('filterYear'), filterEnding: $('filterEnding'), filterDocuments: $('filterDocuments'), filterAlerts: $('filterAlerts'), filterFinancial: $('filterFinancial'), filterAdhesions: $('filterAdhesions'),
     activeFilters: $('activeFilters'), filteredCount: $('filteredCount'), totalCount: $('totalCount'), filteredAdhesionCount: $('filteredAdhesionCount'),
     kpiTotal: $('kpiTotal'), kpiActive: $('kpiActive'), kpiValid: $('kpiValid'), kpiEnding: $('kpiEnding'), kpiNoEnd: $('kpiNoEnd'), kpiAlerts: $('kpiAlerts'),
@@ -1731,10 +1735,29 @@ dialog::backdrop { background: rgba(28, 14, 16, .62); backdrop-filter: blur(2px)
     if (values.some(value => String(value) === current)) select.value = current;
   }
 
+  function fillPartnerSelect() {
+    const current = els.filterPartner.value;
+    const counts = new Map();
+    state.records.forEach(record => {
+      const value = cleanText(record.partner);
+      if (!value) return;
+      counts.set(value, (counts.get(value) || 0) + 1);
+    });
+    const values = [...counts.keys()].sort((a, b) => collator.compare(a, b));
+    els.filterPartner.innerHTML = `<option value="">Todos os parceiros (${numberFormat.format(state.records.length)} atos)</option>`
+      + values.map(value => {
+        const count = counts.get(value) || 0;
+        const suffix = count === 1 ? '1 ato' : `${numberFormat.format(count)} atos`;
+        return `<option value="${escapeHtml(value)}">${escapeHtml(value)} — ${suffix}</option>`;
+      }).join('');
+    if (values.some(value => value === current)) els.filterPartner.value = current;
+  }
+
   function populateFilterOptions() {
     fillSelect(els.filterStatus, uniqueSorted('status'), 'Todas as situações');
     fillSelect(els.filterValidity, uniqueSorted('validity'), 'Todas as vigências');
     fillSelect(els.filterUnit, uniqueSorted('unit'), 'Todas as unidades');
+    fillPartnerSelect();
     fillSelect(els.filterClass, uniqueSorted('className'), 'Todas as classes');
     fillSelect(els.filterInstrument, uniqueSorted('instrument'), 'Todos os instrumentos');
     fillSelect(els.filterYear, uniqueSorted('yearSignature', true), 'Todos os anos');
@@ -1746,6 +1769,7 @@ dialog::backdrop { background: rgba(28, 14, 16, .62); backdrop-filter: blur(2px)
       status: els.filterStatus.value,
       validity: els.filterValidity.value,
       unit: els.filterUnit.value,
+      partner: els.filterPartner.value,
       className: els.filterClass.value,
       instrument: els.filterInstrument.value,
       year: els.filterYear.value,
@@ -1758,8 +1782,8 @@ dialog::backdrop { background: rgba(28, 14, 16, .62); backdrop-filter: blur(2px)
   }
 
   function resetFilters(render = true) {
-    state.filters = { search: '', status: '', validity: '', unit: '', className: '', instrument: '', year: '', ending: '', documents: '', alerts: false, financial: false, adhesions: false };
-    [els.filterSearch, els.filterStatus, els.filterValidity, els.filterUnit, els.filterClass, els.filterInstrument, els.filterYear, els.filterEnding, els.filterDocuments].forEach(element => { if (element) element.value = ''; });
+    state.filters = { search: '', status: '', validity: '', unit: '', partner: '', className: '', instrument: '', year: '', ending: '', documents: '', alerts: false, financial: false, adhesions: false };
+    [els.filterSearch, els.filterStatus, els.filterValidity, els.filterUnit, els.filterPartner, els.filterClass, els.filterInstrument, els.filterYear, els.filterEnding, els.filterDocuments].forEach(element => { if (element) element.value = ''; });
     els.filterAlerts.checked = false;
     els.filterFinancial.checked = false;
     els.filterAdhesions.checked = false;
@@ -1775,6 +1799,7 @@ dialog::backdrop { background: rgba(28, 14, 16, .62); backdrop-filter: blur(2px)
       if (filters.status && record.status !== filters.status) return false;
       if (filters.validity && record.validity !== filters.validity) return false;
       if (filters.unit && record.unit !== filters.unit) return false;
+      if (filters.partner && record.partner !== filters.partner) return false;
       if (filters.className && record.className !== filters.className) return false;
       if (filters.instrument && record.instrument !== filters.instrument) return false;
       if (filters.year && String(record.yearSignature ?? '') !== String(filters.year)) return false;
@@ -1833,6 +1858,7 @@ dialog::backdrop { background: rgba(28, 14, 16, .62); backdrop-filter: blur(2px)
     add('status', 'Situação', filters.status);
     add('validity', 'Vigência', filters.validity);
     add('unit', 'Unidade', filters.unit);
+    add('partner', 'Parceiro principal', filters.partner);
     add('className', 'Classe', filters.className);
     add('instrument', 'Instrumento', filters.instrument);
     add('year', 'Ano', filters.year);
@@ -2154,6 +2180,7 @@ dialog::backdrop { background: rgba(28, 14, 16, .62); backdrop-filter: blur(2px)
       status: els.filterStatus,
       validity: els.filterValidity,
       unit: els.filterUnit,
+      partner: els.filterPartner,
       className: els.filterClass,
       instrument: els.filterInstrument,
       year: els.filterYear,
@@ -2757,7 +2784,7 @@ dialog::backdrop { background: rgba(28, 14, 16, .62); backdrop-filter: blur(2px)
 
     let searchTimer = 0;
     els.filterSearch.addEventListener('input', () => { window.clearTimeout(searchTimer); searchTimer = window.setTimeout(() => applyFilters(), 160); });
-    [els.filterStatus, els.filterValidity, els.filterUnit, els.filterClass, els.filterInstrument, els.filterYear, els.filterEnding, els.filterDocuments, els.filterAlerts, els.filterFinancial, els.filterAdhesions]
+    [els.filterStatus, els.filterValidity, els.filterUnit, els.filterPartner, els.filterClass, els.filterInstrument, els.filterYear, els.filterEnding, els.filterDocuments, els.filterAlerts, els.filterFinancial, els.filterAdhesions]
       .forEach(element => element.addEventListener('change', () => applyFilters()));
     els.clearFiltersBtn.addEventListener('click', () => resetFilters());
     els.advancedFiltersBtn.addEventListener('click', () => {
@@ -2831,6 +2858,7 @@ dialog::backdrop { background: rgba(28, 14, 16, .62); backdrop-filter: blur(2px)
     if (state.records.some(record => !record.searchBlob)) errors.push('searchBlob');
     if (!document.querySelector('#statusChart .donut')) errors.push('statusChart');
     if (!els.tableBody.querySelector('tr')) errors.push('table');
+    if (!els.filterPartner || ![...els.filterPartner.options].some(option => option.value === 'Conselho Nacional da Justiça (CNJ)')) errors.push('partnerFilter');
     const status = document.createElement('div');
     status.id = 'selfTestStatus';
     status.style.display = 'none';
